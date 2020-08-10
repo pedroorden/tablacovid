@@ -1,4 +1,4 @@
-# Eventos Covid 19 en CABA
+# Eventos Covid 19 en Ciudad Autónoma de Buenos Aires
 
 Código de extracción de datos abiertos sobre el virus Covid 19 en CABA utilizando R.
 
