@@ -1,0 +1,80 @@
+---
+title: Tabla de síntesis Eventos Covid19 en CABA
+subtitle: Ejemplo de extracción y sistematización
+author: Pedro Damian Orden
+date: "Actualizado: `r format(Sys.time(), '%d-%m-%Y')`"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+
+library(DT)
+
+```
+
+## Tabla general de eventos COVID 19 en CABA por Comuna
+
+La presente tabla sintetiza las principales variables relacionadas con el Corona Virus en Ciudad de Buenos Aires por Comuna, consultando los datos abiertos disponibles en [BA Data](https://data.buenosaires.gob.ar/).  
+
+```{r extracción de datos, echo= F ,message=FALSE, warning=FALSE, out.width = '100%'}
+
+# extracción de datos abiertos covid 19 (CABA)
+datoscovid19 <- read.csv(file='https://cdn.buenosaires.gob.ar/datosabiertos/datasets/salud/casos-covid-19/casos_covid19.csv') %>% #consulta al portal de datos abiertos
+  filter(clasificacion== "confirmado") #solo casos covid 19 confirmados
+
+# datos de población por comunas en base a las proyecciones de la Dirección General de Estadistica y Censos (CABA)
+poblacion <- read.csv('https://docs.google.com/spreadsheets/d/e/2PACX-1vQl0VB4N10rzwKyKMUZ8ko4Yab-Iyxpv98gMvOneSVvCX5T1nWX6koxEsXpHHiwXy61EszApIITvzKX/pub?gid=0&single=true&output=csv')
+
+#Armado de vectores (simple)
+
+## casos por comuna
+casos_caba <- datoscovid19 %>%
+  filter(provincia=="CABA")%>%
+  group_by(comuna) %>%
+  count()
+
+casos_caba <- casos_caba %>%
+  rename(casos= n)
+
+## muertos por comuna
+muertes_caba <- datoscovid19 %>%
+  filter(provincia=="CABA")%>%
+  group_by(comuna) %>%
+  filter(fallecido=="si")%>%
+  count()
+
+muertes_caba <- muertes_caba %>%
+  rename(muertes= n)
+
+eventos_generales <- left_join(casos_caba, muertes_caba, by = "comuna") %>%
+  group_by(comuna) %>%
+  filter(!any(is.na(comuna))) # eliminamos casos perdidos (supone una decisión metodológica),
+                              # excluye un 3/4% de los casos confirmados.
+
+# suma vector de poblacion para calcular variables 
+eventos_final <- left_join(eventos_generales, poblacion, by = "comuna")
+
+# calcula variables y arma tabla final para plotear
+eventos_final <- eventos_final %>%
+  mutate(`confirmados x 100mil/hab` = 1e5*casos/poblacion, #incidencia por 100mil
+         `fallecidos x 100mil/hab` = 1e5*muertes/poblacion, #mortalidad por 100mil
+         `letalidad %` = muertes/casos*100) %>% # letalidad en %
+  mutate(across(is.numeric, ~ round(., 1))) # normaliza decimales
+
+# armado de tabla final
+datatable(eventos_final, class = 'cell-border stripe',
+          caption = 'Cuadro comparativo con datos actualizados en tiempo real.',
+          rownames = FALSE)
+
+
+
+
+
+```
+
